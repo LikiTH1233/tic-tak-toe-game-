@@ -1,10 +1,15 @@
 const express = require("express");
 const app = express();
 const http = require("http").createServer(app);
-const io = require("socket.io")(http);
-const PORT = process.env.PORT || 3000;
+const io = require("socket.io")(http, {
+  cors: { origin: "*" } // allow connections from any domain
+});
 
+// Serve static files (index.html, style.css, script.js)
 app.use(express.static(__dirname));
+
+// Use dynamic port for Render
+const PORT = process.env.PORT || 3000;
 
 const rooms = {}; // { roomId: { players: [{id,name,symbol,score}], board, currentPlayer } }
 
