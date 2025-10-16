@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>✨ Tic Tac Toe Online ✨</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="container">
+    <h1>✨ Tic Tac Toe Online ✨</h1>
+
+    <div id="nameScreen">
+      <input id="playerName" type="text" placeholder="Enter your name" />
+      <input id="roomInput" type="text" placeholder="Enter Room ID to Join (optional)" />
+      <button id="createBtn">Create Room</button>
+      <button id="joinBtn">Join Room</button>
+    </div>
+
+    <div id="roomScreen" style="display:none;">
+      <h2 id="roomInfo">Waiting...</h2>
+      <div id="scoreboard">Scoreboard</div>
+      <div class="board" id="board"></div>
+      <button id="restartBtn" style="display:none;">Restart</button>
+    </div>
+
+    <div id="modal" style="display:none;">
+      <div id="modalMsg"></div>
+      <button id="playAgainBtn">Play Again</button>
+    </div>
+  </div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="script.js"></script>
+</body>
+</html>
