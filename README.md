@@ -1,5 +1,5 @@
 # Multiplayer Tic-Tac-Toe Game
-** Game is live at : https://tic-tak-toe-game-aeej.onrender.com/
+## Game is live at : https://tic-tak-toe-game-aeej.onrender.com/
 A **real-time multiplayer Tic-Tac-Toe game** built with **Node.js**, **Express**, and **Socket.io**.  
 Features include:
 
