@@ -1,6 +1,5 @@
 const socket = io();
 
-// DOM Elements
 const playerNameInput = document.getElementById("playerName");
 const createBtn = document.getElementById("createBtn");
 const joinBtn = document.getElementById("joinBtn");
@@ -40,7 +39,7 @@ for (let i = 0; i < 9; i++) {
 }
 const cells = document.querySelectorAll(".cell");
 
-// --------- BUTTON EVENTS ---------
+// BUTTON EVENTS
 createBtn.addEventListener("click", () => {
   const name = playerNameInput.value.trim();
   if (!name) return alert("Enter your name!");
@@ -56,7 +55,7 @@ joinBtn.addEventListener("click", () => {
   socket.emit("joinRoom", { name, roomId: id });
 });
 
-// Game board click
+// GAMEPLAY
 cells.forEach(cell => {
   cell.addEventListener("click", () => {
     if (!roomId || !mySymbol) return;
@@ -64,7 +63,6 @@ cells.forEach(cell => {
   });
 });
 
-// Restart game
 restartBtn.addEventListener("click", () => {
   socket.emit("restartGame", roomId);
 });
@@ -74,7 +72,7 @@ playAgainBtn.addEventListener("click", () => {
   socket.emit("restartGame", roomId);
 });
 
-// --------- CHAT ---------
+// CHAT
 sendBtn.addEventListener("click", () => {
   const msg = chatInput.value.trim();
   if (!msg) return;
@@ -83,26 +81,15 @@ sendBtn.addEventListener("click", () => {
 });
 
 socket.on("receiveMessage", ({ name, message }) => {
-  chatContainer.style.display = "block";
   const msgDiv = document.createElement("div");
   msgDiv.textContent = `${name}: ${message}`;
-  chatBox.appendChild(msgDiv);
-  chatBox.scrollTop = chatBox.scrollHeight;
+  chatContainer.appendChild(msgDiv);
+  chatContainer.scrollTop = chatContainer.scrollHeight;
 });
 
-// --------- SWITCH SYMBOL FEATURE ---------
+// SWITCH SYMBOL
 switchBtn.addEventListener("click", () => {
   socket.emit("requestSwitch", { roomId, name: myName });
-});
-
-socket.on("switchRequest", ({ from }) => {
-  // Show switch request to the other player
-  if (switchRequestContainer) {
-    switchRequestMsg.textContent = `${from} wants to switch symbols.`;
-    switchRequestContainer.style.display = "block";
-  } else {
-    alert(`${from} wants to switch symbols.`); // fallback
-  }
 });
 
 acceptSwitchBtn.addEventListener("click", () => {
@@ -115,65 +102,57 @@ declineSwitchBtn.addEventListener("click", () => {
   switchRequestContainer.style.display = "none";
 });
 
-socket.on("switchUpdate", ({ message, players: pl }) => {
-  alert(message); // Optional
-  players = pl;
-
-  const me = players.find(p => p.id === socket.id);
-  if (me) mySymbol = me.symbol;
-
-  // Update UI after switch
-  updateScoreboard();
-  roomInfo.textContent = `Game Started! You are ${mySymbol}`;
-});
-
-// --------- SOCKET EVENTS ---------
+// SOCKET EVENTS
 socket.on("roomCreated", ({ roomId: id, symbol }) => {
   roomId = id;
   mySymbol = symbol;
-  showBoard(`Room Created! Code: ${id} | You are ${mySymbol}`);
+  nameScreen.style.display = "none";
+  roomScreen.style.display = "block";
+  roomInfo.textContent = `Room ID: ${roomId}`;
 });
 
 socket.on("joinedRoom", ({ roomId: id, symbol }) => {
   roomId = id;
   mySymbol = symbol;
-  showBoard(`Joined Room! You are ${mySymbol}`);
+  nameScreen.style.display = "none";
+  roomScreen.style.display = "block";
+  roomInfo.textContent = `Room ID: ${roomId}`;
 });
 
-socket.on("startGame", (data) => {
-  players = data.players;
-  const me = players.find(p => p.name === myName);
-  if (me) mySymbol = me.symbol;
-  showBoard(`Game Started! You are ${mySymbol}`);
-  updateScoreboard();
+socket.on("startGame", ({ players: pl, board, currentPlayer }) => {
+  players = pl;
+  updateBoard(board, currentPlayer);
 });
 
 socket.on("updateBoard", ({ board, currentPlayer, players: pl, gameOverMsg }) => {
   players = pl;
-  cells.forEach((cell, i) => {
-    cell.textContent = board[i] || "";
-    cell.classList.toggle("taken", !!board[i]);
-  });
+  updateBoard(board, currentPlayer);
   updateScoreboard();
   if (gameOverMsg) {
-    modal.style.display = "flex";
     modalMsg.textContent = gameOverMsg;
+    modal.style.display = "block";
   }
 });
 
-socket.on("errorMsg", (msg) => alert(msg));
+socket.on("switchRequest", ({ from }) => {
+  switchRequestMsg.textContent = `${from} wants to switch symbols!`;
+  switchRequestContainer.style.display = "block";
+});
 
-// --------- HELPERS ---------
-function showBoard(message) {
-  nameScreen.style.display = "none";
-  roomScreen.style.display = "block";
-  roomInfo.textContent = message;
-  restartBtn.style.display = "block";
-  chatContainer.style.display = "block";
+socket.on("switchUpdate", ({ message, players: pl }) => {
+  players = pl;
+  updateScoreboard();
+  alert(message);
+});
+
+// FUNCTIONS
+function updateBoard(board, currentPlayer) {
+  cells.forEach((cell, i) => {
+    cell.textContent = board[i] || "";
+    cell.style.pointerEvents = board[i] || currentPlayer !== mySymbol ? "none" : "auto";
+  });
 }
 
 function updateScoreboard() {
-  scoreboard.innerHTML = players
-    .map(p => `${p.name} (${p.symbol}): ${p.score}`)
-    .join(" | ");
+  scoreboard.innerHTML = players.map(p => `${p.name} (${p.symbol}): ${p.score}`).join(" | ");
 }
