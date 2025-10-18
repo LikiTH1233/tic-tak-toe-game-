@@ -30,7 +30,7 @@ let mySymbol = null;
 let myName = null;
 let players = [];
 
-// Create 9 board cells
+// CREATE BOARD CELLS
 for (let i = 0; i < 9; i++) {
   const cell = document.createElement("div");
   cell.classList.add("cell");
@@ -39,7 +39,7 @@ for (let i = 0; i < 9; i++) {
 }
 const cells = document.querySelectorAll(".cell");
 
-// BUTTON EVENTS
+// BUTTONS
 createBtn.addEventListener("click", () => {
   const name = playerNameInput.value.trim();
   if (!name) return alert("Enter your name!");
@@ -55,7 +55,6 @@ joinBtn.addEventListener("click", () => {
   socket.emit("joinRoom", { name, roomId: id });
 });
 
-// GAMEPLAY
 cells.forEach(cell => {
   cell.addEventListener("click", () => {
     if (!roomId || !mySymbol) return;
@@ -63,10 +62,7 @@ cells.forEach(cell => {
   });
 });
 
-restartBtn.addEventListener("click", () => {
-  socket.emit("restartGame", roomId);
-});
-
+restartBtn.addEventListener("click", () => socket.emit("restartGame", roomId));
 playAgainBtn.addEventListener("click", () => {
   modal.style.display = "none";
   socket.emit("restartGame", roomId);
@@ -81,15 +77,21 @@ sendBtn.addEventListener("click", () => {
 });
 
 socket.on("receiveMessage", ({ name, message }) => {
+  chatContainer.style.display = "block";
   const msgDiv = document.createElement("div");
   msgDiv.textContent = `${name}: ${message}`;
-  chatContainer.appendChild(msgDiv);
-  chatContainer.scrollTop = chatContainer.scrollHeight;
+  chatBox.appendChild(msgDiv);
+  chatBox.scrollTop = chatBox.scrollHeight;
 });
 
 // SWITCH SYMBOL
 switchBtn.addEventListener("click", () => {
   socket.emit("requestSwitch", { roomId, name: myName });
+});
+
+socket.on("switchRequest", ({ from }) => {
+  switchRequestMsg.textContent = `${from} wants to switch symbols.`;
+  switchRequestContainer.style.display = "flex";
 });
 
 acceptSwitchBtn.addEventListener("click", () => {
@@ -102,57 +104,61 @@ declineSwitchBtn.addEventListener("click", () => {
   switchRequestContainer.style.display = "none";
 });
 
+socket.on("switchUpdate", ({ message, players: pl }) => {
+  alert(message);
+  players = pl;
+  const me = players.find(p => p.id === socket.id);
+  if (me) mySymbol = me.symbol;
+  updateScoreboard();
+});
+
 // SOCKET EVENTS
 socket.on("roomCreated", ({ roomId: id, symbol }) => {
   roomId = id;
   mySymbol = symbol;
-  nameScreen.style.display = "none";
-  roomScreen.style.display = "block";
-  roomInfo.textContent = `Room ID: ${roomId}`;
+  showBoard(`Room Created! Code: ${id} | You are ${mySymbol}`);
 });
 
 socket.on("joinedRoom", ({ roomId: id, symbol }) => {
   roomId = id;
   mySymbol = symbol;
-  nameScreen.style.display = "none";
-  roomScreen.style.display = "block";
-  roomInfo.textContent = `Room ID: ${roomId}`;
+  showBoard(`Joined Room! You are ${mySymbol}`);
 });
 
-socket.on("startGame", ({ players: pl, board, currentPlayer }) => {
-  players = pl;
-  updateBoard(board, currentPlayer);
+socket.on("startGame", (data) => {
+  players = data.players;
+  const me = players.find(p => p.name === myName);
+  if (me) mySymbol = me.symbol;
+  showBoard(`Game Started! You are ${mySymbol}`);
+  updateScoreboard();
 });
 
 socket.on("updateBoard", ({ board, currentPlayer, players: pl, gameOverMsg }) => {
   players = pl;
-  updateBoard(board, currentPlayer);
+  cells.forEach((cell, i) => {
+    cell.textContent = board[i] || "";
+    cell.classList.toggle("taken", !!board[i]);
+  });
   updateScoreboard();
   if (gameOverMsg) {
+    modal.style.display = "flex";
     modalMsg.textContent = gameOverMsg;
-    modal.style.display = "block";
   }
 });
 
-socket.on("switchRequest", ({ from }) => {
-  switchRequestMsg.textContent = `${from} wants to switch symbols!`;
-  switchRequestContainer.style.display = "block";
-});
+socket.on("errorMsg", (msg) => alert(msg));
 
-socket.on("switchUpdate", ({ message, players: pl }) => {
-  players = pl;
-  updateScoreboard();
-  alert(message);
-});
-
-// FUNCTIONS
-function updateBoard(board, currentPlayer) {
-  cells.forEach((cell, i) => {
-    cell.textContent = board[i] || "";
-    cell.style.pointerEvents = board[i] || currentPlayer !== mySymbol ? "none" : "auto";
-  });
+// HELPERS
+function showBoard(message) {
+  nameScreen.style.display = "none";
+  roomScreen.style.display = "block";
+  roomInfo.textContent = message;
+  restartBtn.style.display = "block";
+  chatContainer.style.display = "block";
 }
 
 function updateScoreboard() {
-  scoreboard.innerHTML = players.map(p => `${p.name} (${p.symbol}): ${p.score}`).join(" | ");
+  scoreboard.innerHTML = players
+    .map(p => `${p.name} (${p.symbol}): ${p.score}`)
+    .join(" | ");
 }
