@@ -2,13 +2,14 @@ const express = require("express");
 const app = express();
 const http = require("http").createServer(app);
 const io = require("socket.io")(http, {
-  cors: { origin: "*" } // allow connections from any domain
+  cors: { origin: "*" }
 });
 
 const PORT = process.env.PORT || 3000;
-const rooms = {}; // store all game rooms
 
-// Serve static files
+// Store rooms
+const rooms = {};
+
 app.use(express.static(__dirname));
 
 io.on("connection", (socket) => {
@@ -31,12 +32,10 @@ io.on("connection", (socket) => {
     const room = rooms[roomId];
     if (!room) return socket.emit("errorMsg", "Room does not exist!");
     if (room.players.length >= 2) return socket.emit("errorMsg", "Room is full!");
-    
     const player = { id: socket.id, name, symbol: "O", score: 0 };
     room.players.push(player);
     socket.join(roomId);
     socket.emit("joinedRoom", { roomId, symbol: "O" });
-
     io.to(roomId).emit("startGame", {
       players: room.players.map(p => ({ id: p.id, name: p.name, symbol: p.symbol, score: p.score })),
       board: room.board,
@@ -48,13 +47,12 @@ io.on("connection", (socket) => {
   socket.on("makeMove", ({ roomId, index }) => {
     const room = rooms[roomId];
     if (!room) return;
-    const playerIndex = room.players.findIndex(p => p.id === socket.id);
-    if (playerIndex === -1) return;
-    const playerSymbol = room.players[playerIndex].symbol;
-    if (room.board[index] || room.currentPlayer !== playerSymbol) return;
+    const player = room.players.find(p => p.id === socket.id);
+    if (!player) return;
+    if (room.board[index] || room.currentPlayer !== player.symbol) return;
 
-    room.board[index] = playerSymbol;
-    room.currentPlayer = playerSymbol === "X" ? "O" : "X";
+    room.board[index] = player.symbol;
+    room.currentPlayer = player.symbol === "X" ? "O" : "X";
 
     const winnerSymbol = checkWinner(room.board);
     let gameOverMsg = null;
@@ -95,7 +93,7 @@ io.on("connection", (socket) => {
     io.to(roomId).emit("receiveMessage", { name, message });
   });
 
-  // SYMBOL SWITCH
+  // REQUEST SWITCH SYMBOL
   socket.on("requestSwitch", ({ roomId, name }) => {
     const room = rooms[roomId];
     if (!room) return;
@@ -105,6 +103,7 @@ io.on("connection", (socket) => {
     }
   });
 
+  // SWITCH RESPONSE
   socket.on("switchResponse", ({ roomId, accepted }) => {
     const room = rooms[roomId];
     if (!room) return;
@@ -115,6 +114,11 @@ io.on("connection", (socket) => {
       io.to(roomId).emit("switchUpdate", {
         message: "Symbol switch accepted! Symbols updated.",
         players: room.players
+      });
+      io.to(roomId).emit("startGame", {
+        players: room.players.map(p => ({ id: p.id, name: p.name, symbol: p.symbol, score: p.score })),
+        board: room.board,
+        currentPlayer: room.currentPlayer
       });
     } else {
       io.to(roomId).emit("switchUpdate", {
@@ -130,10 +134,7 @@ io.on("connection", (socket) => {
       const index = room.players.findIndex(p => p.id === socket.id);
       if (index !== -1) {
         const [removed] = room.players.splice(index, 1);
-        io.to(id).emit("receiveMessage", {
-          name: "System",
-          message: `${removed.name} left the room.`
-        });
+        io.to(id).emit("receiveMessage", { name: "System", message: `${removed.name} left the room.` });
         if (room.players.length === 0) delete rooms[id];
         break;
       }
@@ -141,14 +142,15 @@ io.on("connection", (socket) => {
   });
 });
 
-function checkWinner(b) {
+// CHECK WINNER
+function checkWinner(board) {
   const wins = [
-    [0,1,2],[3,4,5],[6,7,8],
-    [0,3,6],[1,4,7],[2,5,8],
-    [0,4,8],[2,4,6]
+    [0, 1, 2], [3, 4, 5], [6, 7, 8],
+    [0, 3, 6], [1, 4, 7], [2, 5, 8],
+    [0, 4, 8], [2, 4, 6]
   ];
-  for (const [a,b1,c] of wins) {
-    if (b[a] && b[a] === b[b1] && b[a] === b[c]) return b[a];
+  for (const [a, b, c] of wins) {
+    if (board[a] && board[a] === board[b] && board[a] === board[c]) return board[a];
   }
   return null;
 }
