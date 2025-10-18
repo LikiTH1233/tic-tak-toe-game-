@@ -14,5 +14,13 @@
     "express": "^5.1.0",
     "socket.io": "^4.8.1"
   },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/LikiTH1233/tic-tak-toe-game-.git"
+  },
+  "bugs": {
+    "url": "https://github.com/LikiTH1233/tic-tak-toe-game-/issues"
+  },
+  "homepage": "https://github.com/LikiTH1233/tic-tak-toe-game-#readme",
   "description": ""
 }
